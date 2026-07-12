@@ -122,6 +122,11 @@ export default function Dashboard() {
       }
 
       setProgress({ current: i + 1, total: lines.length });
+
+      // Small delay between checks to avoid WhatsApp throttling / ban risk
+      if (i < lines.length - 1) {
+        await new Promise((r) => setTimeout(r, 400));
+      }
     }
 
     setIsProcessing(false);
