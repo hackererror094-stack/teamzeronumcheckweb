@@ -23,6 +23,7 @@ import {
   Link2,
   Copy,
   Check,
+  Square,
 } from "lucide-react";
 
 type LogEntry = {
@@ -317,21 +318,34 @@ export default function Dashboard() {
                 </p>
               )}
 
-              <Button
-                onClick={handleStart}
-                disabled={!isConnected || isProcessing || !numbersInput.trim()}
-                className="w-full font-medium"
-                size="lg"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing... {progress.current} / {progress.total}
-                  </>
-                ) : (
-                  "Start Verification"
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleStart}
+                  disabled={!isConnected || isProcessing || !numbersInput.trim()}
+                  className="flex-1 font-medium"
+                  size="lg"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {progress.current} / {progress.total}
+                    </>
+                  ) : (
+                    "Start Verification"
+                  )}
+                </Button>
+                {isProcessing && (
+                  <Button
+                    onClick={() => { shouldRunRef.current = false; }}
+                    variant="outline"
+                    size="lg"
+                    className="border-rose-500/50 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500 px-4"
+                    title="Scan stop karo"
+                  >
+                    <Square className="h-4 w-4 fill-rose-400" />
+                  </Button>
                 )}
-              </Button>
+              </div>
 
               {done && logs.length > 0 && (
                 <div className="flex flex-col gap-2">
