@@ -5,6 +5,8 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import pino from "pino";
 import { EventEmitter } from "events";
+import { rm } from "fs/promises";
+import path from "path";
 
 export interface WaState {
   connected: boolean;
@@ -12,6 +14,12 @@ export interface WaState {
   phone: string | null;
   pairingCode: string | null;
 }
+
+// Resolve auth dir relative to workspace root (works in both dev and prod)
+const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
+  ? path.resolve(process.cwd(), "../..")
+  : process.cwd();
+const AUTH_DIR = path.resolve(workspaceRoot, "auth_info_baileys");
 
 class WhatsAppManager extends EventEmitter {
   private sock: WASocket | null = null;
@@ -23,115 +31,20 @@ class WhatsAppManager extends EventEmitter {
     return { ...this.state };
   }
 
-  private async createSocket(pairingPhone?: string) {
-    const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
-
-    const sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      logger: pino({ level: "silent" }) as any,
-    });
-
-    sock.ev.on("creds.update", saveCreds);
-
-    sock.ev.on("connection.update", async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr && !pairingPhone) {
-        this.state = { ...this.state, qr, pairingCode: null };
-        this.emit("state", this.state);
-      }
-
-      if (connection === "open") {
-        const phone = sock.user?.id?.split(":")[0] ?? null;
-        this.state = { connected: true, qr: null, phone, pairingCode: null };
-        this.connecting = false;
-        this.emit("state", this.state);
-      }
-
-      if (connection === "close") {
-        this.state = { connected: false, qr: null, phone: null, pairingCode: null };
-        this.connecting = false;
-        this.emit("state", this.state);
-
-        if (!this.preventReconnect) {
-          const code = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = code !== DisconnectReason.loggedOut;
-          if (shouldReconnect) {
-            setTimeout(() => this.connect(), 3000);
-          }
-        }
-      }
-    });
-
-    return sock;
+  private killSocket() {
+    if (this.sock) {
+      try { this.sock.end(undefined); } catch { /* ignore */ }
+      this.sock = null;
+    }
   }
 
-  async connect(pairingPhone?: string) {
+  async connect() {
     if (this.connecting || this.state.connected) return;
     this.connecting = true;
     this.preventReconnect = false;
 
     try {
-      this.sock = await this.createSocket(pairingPhone);
-
-      if (pairingPhone) {
-        const { state } = await useMultiFileAuthState("auth_info_baileys");
-        if (!state.creds.registered) {
-          await new Promise((r) => setTimeout(r, 2000));
-          try {
-            const cleanPhone = pairingPhone.replace(/[^0-9]/g, "");
-            const code = await this.sock.requestPairingCode(cleanPhone);
-            const formatted = code?.match(/.{1,4}/g)?.join("-") ?? code;
-            this.state = { ...this.state, pairingCode: formatted ?? null };
-            this.connecting = false;
-            this.emit("state", this.state);
-          } catch (e) {
-            this.connecting = false;
-            throw e;
-          }
-        } else {
-          this.connecting = false;
-        }
-      }
-    } catch (err) {
-      this.connecting = false;
-      throw err;
-    }
-  }
-
-  async requestPairingCode(phoneNumber: string): Promise<string> {
-    const cleanPhone = phoneNumber.replace(/[^0-9]/g, "");
-
-    // Close any existing unconnected socket cleanly
-    if (!this.state.connected && this.sock) {
-      this.preventReconnect = true;
-      try { this.sock.end(undefined); } catch { /* ignore */ }
-      this.sock = null;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-
-    if (this.state.connected) {
-      throw new Error("WhatsApp already connected. Pehle disconnect karein.");
-    }
-
-    this.connecting = false;
-    this.preventReconnect = false;
-    this.state = { connected: false, qr: null, phone: null, pairingCode: null };
-
-    // Create fresh socket for pairing
-    this.connecting = true;
-    this.preventReconnect = false;
-
-    try {
-      const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
-
-      if (state.creds.registered) {
-        // Already registered — just reconnect normally
-        this.connecting = false;
-        await this.connect();
-        throw new Error("Already registered. Refresh the page.");
-      }
+      const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
 
       const sock = makeWASocket({
         auth: state,
@@ -141,8 +54,13 @@ class WhatsAppManager extends EventEmitter {
 
       sock.ev.on("creds.update", saveCreds);
 
-      sock.ev.on("connection.update", async (update) => {
-        const { connection, lastDisconnect } = update;
+      sock.ev.on("connection.update", (update) => {
+        const { connection, lastDisconnect, qr } = update;
+
+        if (qr) {
+          this.state = { ...this.state, qr, pairingCode: null };
+          this.emit("state", this.state);
+        }
 
         if (connection === "open") {
           const phone = sock.user?.id?.split(":")[0] ?? null;
@@ -166,30 +84,115 @@ class WhatsAppManager extends EventEmitter {
       });
 
       this.sock = sock;
-
-      // Wait for socket to be ready then request pairing code
-      await new Promise((r) => setTimeout(r, 2000));
-
-      const code = await sock.requestPairingCode(cleanPhone);
-      const formatted = code?.match(/.{1,4}/g)?.join("-") ?? code;
-
-      this.state = { ...this.state, pairingCode: formatted ?? null };
+    } catch (err) {
       this.connecting = false;
-      this.emit("state", this.state);
-
-      return formatted ?? code;
-    } catch (err: any) {
-      this.connecting = false;
-      throw new Error(err?.message ?? "Pairing code generate nahi hua");
     }
+  }
+
+  async requestPairingCode(phoneNumber: string): Promise<string> {
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, "");
+    if (!cleanPhone || cleanPhone.length < 7) {
+      throw new Error("Valid phone number required");
+    }
+
+    if (this.state.connected) {
+      throw new Error("WhatsApp already connected. Pehle disconnect karein.");
+    }
+
+    // Stop any existing socket and prevent auto-reconnect
+    this.preventReconnect = true;
+    this.killSocket();
+    this.connecting = false;
+    this.state = { connected: false, qr: null, phone: null, pairingCode: null };
+
+    // Clear stale auth credentials so we get a fresh pairing session
+    try {
+      await rm(AUTH_DIR, { recursive: true, force: true });
+    } catch { /* ignore */ }
+
+    // Small pause to ensure clean state
+    await new Promise((r) => setTimeout(r, 500));
+    this.preventReconnect = false;
+
+    return new Promise(async (resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Pairing code timeout — dobara try karein"));
+      }, 30000);
+
+      try {
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
+
+        const sock = makeWASocket({
+          auth: state,
+          printQRInTerminal: false,
+          logger: pino({ level: "silent" }) as any,
+        });
+
+        sock.ev.on("creds.update", saveCreds);
+
+        let pairingRequested = false;
+
+        sock.ev.on("connection.update", async (update) => {
+          const { connection, lastDisconnect } = update;
+
+          if (connection === "open") {
+            const phone = sock.user?.id?.split(":")[0] ?? null;
+            this.state = { connected: true, qr: null, phone, pairingCode: null };
+            this.connecting = false;
+            this.emit("state", this.state);
+            clearTimeout(timeout);
+          }
+
+          // Request pairing code once socket is connecting (not yet open)
+          // Baileys fires connection.update with connection=undefined when QR would appear
+          if (!pairingRequested && connection !== "open" && connection !== "close") {
+            pairingRequested = true;
+            try {
+              await new Promise((r) => setTimeout(r, 1500));
+              const code = await sock.requestPairingCode(cleanPhone);
+              const formatted = code?.match(/.{1,4}/g)?.join("-") ?? code;
+              this.state = { ...this.state, pairingCode: formatted ?? null };
+              this.emit("state", this.state);
+              clearTimeout(timeout);
+              resolve(formatted ?? code);
+            } catch (e: any) {
+              clearTimeout(timeout);
+              reject(new Error(e?.message ?? "Code generate nahi hua"));
+            }
+          }
+
+          if (connection === "close") {
+            this.state = { connected: false, qr: null, phone: null, pairingCode: null };
+            this.connecting = false;
+            this.emit("state", this.state);
+
+            if (!this.preventReconnect) {
+              const code = (lastDisconnect?.error as any)?.output?.statusCode;
+              if (code !== DisconnectReason.loggedOut) {
+                setTimeout(() => this.connect(), 3000);
+              }
+            }
+
+            if (!pairingRequested) {
+              clearTimeout(timeout);
+              reject(new Error("Connection closed before pairing code could be generated. Dobara try karein."));
+            }
+          }
+        });
+
+        this.sock = sock;
+      } catch (err: any) {
+        clearTimeout(timeout);
+        reject(new Error(err?.message ?? "Socket create nahi ho saka"));
+      }
+    });
   }
 
   async disconnect() {
     this.preventReconnect = true;
     if (this.sock) {
       try { await this.sock.logout(); } catch { /* ignore */ }
-      try { this.sock.end(undefined); } catch { /* ignore */ }
-      this.sock = null;
+      this.killSocket();
     }
     this.state = { connected: false, qr: null, phone: null, pairingCode: null };
     this.connecting = false;
