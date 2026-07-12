@@ -24,6 +24,8 @@ import {
   Copy,
   Check,
   Square,
+  Download,
+  PlayCircle,
 } from "lucide-react";
 
 type LogEntry = {
@@ -41,6 +43,7 @@ export default function Dashboard() {
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [done, setDone] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const [copied, setCopied] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [pairingError, setPairingError] = useState("");
@@ -92,14 +95,19 @@ export default function Dashboard() {
 
     setIsProcessing(true);
     setDone(false);
+    setStopped(false);
     setLogs([]);
     setProgress({ current: 0, total: lines.length });
     shouldRunRef.current = true;
 
     const newLogs: LogEntry[] = [];
+    let stoppedAt = lines.length;
 
     for (let i = 0; i < lines.length; i++) {
-      if (!shouldRunRef.current) break;
+      if (!shouldRunRef.current) {
+        stoppedAt = i;
+        break;
+      }
 
       const num = lines[i];
       try {
@@ -127,36 +135,57 @@ export default function Dashboard() {
 
       setProgress({ current: i + 1, total: lines.length });
 
-      // Small delay between checks to avoid WhatsApp throttling / ban risk
       if (i < lines.length - 1) {
         await new Promise((r) => setTimeout(r, 400));
       }
     }
 
     setIsProcessing(false);
-    setDone(true);
+
+    // Agar beech mein ruka — baaki numbers wapas textarea mein daal do (resume ke liye)
+    if (stoppedAt < lines.length) {
+      setStopped(true);
+      setDone(false);
+      const remaining = lines.slice(stoppedAt);
+      setNumbersInput(remaining.join("\n"));
+    } else {
+      setStopped(false);
+      setDone(true);
+      setNumbersInput("");
+    }
   };
 
-  const handleRemoveBad = () => {
-    const activeNumbers = logs
-      .filter((l) => l.status === "active")
-      .map((l) => l.number);
-    setNumbersInput(activeNumbers.join("\n"));
+  const handleStop = () => {
+    shouldRunRef.current = false;
   };
+
+  const activeNumbers = logs
+    .filter((l) => l.status === "active")
+    .map((l) => l.number);
 
   const handleCopyActive = async () => {
-    const activeNumbers = logs
-      .filter((l) => l.status === "active")
-      .map((l) => l.number)
-      .join("\n");
-    await navigator.clipboard.writeText(activeNumbers);
+    await navigator.clipboard.writeText(activeNumbers.join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownloadActive = () => {
+    const blob = new Blob([activeNumbers.join("\n")], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `active_numbers_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRemoveBad = () => {
+    setNumbersInput(activeNumbers.join("\n"));
+  };
+
   const stats = {
     total: logs.length,
-    active: logs.filter((l) => l.status === "active").length,
+    active: activeNumbers.length,
     deleted: logs.filter((l) => l.status === "deleted").length,
     error: logs.filter((l) => l.status === "error").length,
   };
@@ -164,6 +193,7 @@ export default function Dashboard() {
   const isConnected = waStatus?.connected === true;
   const pairingCode = waStatus?.pairingCode;
   const showPairingForm = !isConnected;
+  const showActionButtons = logs.length > 0 && !isProcessing;
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -227,7 +257,6 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent className="p-4 flex flex-col gap-3">
 
-                {/* Pairing code display */}
                 {pairingCode ? (
                   <div className="flex flex-col items-center gap-3 py-2">
                     <p className="text-xs text-muted-foreground text-center">
@@ -280,7 +309,6 @@ export default function Dashboard() {
                   </>
                 )}
 
-                {/* QR fallback */}
                 {waStatus?.qr && !pairingCode && (
                   <div className="border-t border-border pt-3 mt-1">
                     <p className="text-xs text-muted-foreground text-center mb-3">Ya QR code scan karein:</p>
@@ -318,6 +346,15 @@ export default function Dashboard() {
                 </p>
               )}
 
+              {/* Resume hint */}
+              {stopped && !isProcessing && (
+                <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                  <PlayCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Scan ruka hua hai — baaki <strong>{numbersInput.split("\n").filter(l => l.trim()).length}</strong> numbers ke liye Start dabao</span>
+                </div>
+              )}
+
+              {/* Start + Stop buttons */}
               <div className="flex gap-2">
                 <Button
                   onClick={handleStart}
@@ -330,13 +367,18 @@ export default function Dashboard() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {progress.current} / {progress.total}
                     </>
+                  ) : stopped ? (
+                    <>
+                      <PlayCircle className="mr-2 h-4 w-4" />
+                      Resume Scan
+                    </>
                   ) : (
                     "Start Verification"
                   )}
                 </Button>
                 {isProcessing && (
                   <Button
-                    onClick={() => { shouldRunRef.current = false; }}
+                    onClick={handleStop}
                     variant="outline"
                     size="lg"
                     className="border-rose-500/50 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500 px-4"
@@ -347,29 +389,46 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {done && logs.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={handleCopyActive}
-                    variant="outline"
-                    className="w-full font-medium border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/60"
-                    size="lg"
-                  >
-                    {copied ? (
-                      <><Check className="mr-2 h-4 w-4" /> Copied!</>
-                    ) : (
-                      <><Copy className="mr-2 h-4 w-4" /> Copy Active Numbers ({stats.active})</>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleRemoveBad}
-                    variant="outline"
-                    className="w-full font-medium border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60"
-                    size="lg"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Remove Bad Numbers ({stats.deleted + stats.error})
-                  </Button>
+              {/* Action buttons — scan ke dauran bhi aur baad mein bhi */}
+              {showActionButtons && stats.active > 0 && (
+                <div className="flex flex-col gap-2 pt-1 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground">
+                    {stats.active} active numbers {done ? "mile" : "ab tak mile"}:
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleCopyActive}
+                      variant="outline"
+                      className="flex-1 font-medium border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/60"
+                      size="sm"
+                    >
+                      {copied ? (
+                        <><Check className="mr-2 h-3.5 w-3.5" /> Copied!</>
+                      ) : (
+                        <><Copy className="mr-2 h-3.5 w-3.5" /> Copy</>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={handleDownloadActive}
+                      variant="outline"
+                      className="flex-1 font-medium border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/60"
+                      size="sm"
+                    >
+                      <Download className="mr-2 h-3.5 w-3.5" />
+                      Download .txt
+                    </Button>
+                  </div>
+                  {(done || stopped) && (
+                    <Button
+                      onClick={handleRemoveBad}
+                      variant="outline"
+                      className="w-full font-medium border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60"
+                      size="sm"
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                      Remove Bad Numbers ({stats.deleted + stats.error})
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -414,7 +473,7 @@ export default function Dashboard() {
                 <TerminalSquare className="h-4 w-4 text-muted-foreground" />
                 <CardTitle className="text-sm font-medium text-muted-foreground">Live Execution Log</CardTitle>
               </div>
-              {done && logs.length > 0 && (
+              {logs.length > 0 && (
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className="text-emerald-400">{stats.active} Active</span>
                   <span className="text-rose-400">{stats.deleted} Deleted</span>
@@ -456,9 +515,14 @@ export default function Dashboard() {
                     </div>
                   ))
                 )}
-                {done && logs.length > 0 && (
+                {done && (
                   <div className="text-slate-400 px-2 py-2 mt-2 border-t border-slate-700/50 text-xs">
-                    Done — {stats.active} active, {stats.deleted} deleted/invalid{stats.error > 0 ? `, ${stats.error} errors` : ""}
+                    ✓ Done — {stats.active} active, {stats.deleted} deleted/invalid{stats.error > 0 ? `, ${stats.error} errors` : ""}
+                  </div>
+                )}
+                {stopped && (
+                  <div className="text-amber-400/70 px-2 py-2 mt-2 border-t border-slate-700/50 text-xs">
+                    ⏸ Ruka — {stats.active} active mila ab tak. Baaki numbers textarea mein hain, Resume dabao.
                   </div>
                 )}
               </div>
