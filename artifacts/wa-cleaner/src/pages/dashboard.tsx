@@ -21,6 +21,8 @@ import {
   TerminalSquare,
   Trash2,
   Link2,
+  Copy,
+  Check,
 } from "lucide-react";
 
 type LogEntry = {
@@ -38,6 +40,7 @@ export default function Dashboard() {
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [done, setDone] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [pairingError, setPairingError] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -138,6 +141,16 @@ export default function Dashboard() {
       .filter((l) => l.status === "active")
       .map((l) => l.number);
     setNumbersInput(activeNumbers.join("\n"));
+  };
+
+  const handleCopyActive = async () => {
+    const activeNumbers = logs
+      .filter((l) => l.status === "active")
+      .map((l) => l.number)
+      .join("\n");
+    await navigator.clipboard.writeText(activeNumbers);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const stats = {
@@ -321,15 +334,29 @@ export default function Dashboard() {
               </Button>
 
               {done && logs.length > 0 && (
-                <Button
-                  onClick={handleRemoveBad}
-                  variant="outline"
-                  className="w-full font-medium border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60"
-                  size="lg"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Remove Bad Numbers ({stats.deleted + stats.error})
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    onClick={handleCopyActive}
+                    variant="outline"
+                    className="w-full font-medium border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/60"
+                    size="lg"
+                  >
+                    {copied ? (
+                      <><Check className="mr-2 h-4 w-4" /> Copied!</>
+                    ) : (
+                      <><Copy className="mr-2 h-4 w-4" /> Copy Active Numbers ({stats.active})</>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleRemoveBad}
+                    variant="outline"
+                    className="w-full font-medium border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60"
+                    size="lg"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remove Bad Numbers ({stats.deleted + stats.error})
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
