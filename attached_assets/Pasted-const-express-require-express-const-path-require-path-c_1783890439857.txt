@@ -1,0 +1,91 @@
+const express = require('express');
+const path = require('path');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const pino = require('pino');
+const cors = require('cors');
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+// Serve the frontend HTML files
+app.use(express.static(path.join(__dirname, 'public')));
+
+let sock;
+
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    
+    sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true, // QR Code Terminal me aayega
+        logger: pino({ level: 'silent' }) // Console ko saaf rakhne ke liye
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        
+        if (qr) {
+            console.log('📱 Naya QR Code aaya hai, apne WhatsApp se scan karein!');
+        }
+
+        if (connection === 'close') {
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('⚠️ Connection closed. Reconnecting:', shouldReconnect);
+            if (shouldReconnect) connectToWhatsApp();
+        } else if (connection === 'open') {
+            console.log('✅ WhatsApp connection opened and ready!');
+        }
+    });
+}
+
+// WhatsApp Connection start karein
+connectToWhatsApp();
+
+// API Endpoint numbers check karne ke liye
+app.post('/api/verify-number', async (req, res) => {
+    let { number } = req.body;
+    
+    if (!number) {
+        return res.status(400).json({ error: "Number is required" });
+    }
+
+    // Sirf digits rakhein, baaki symbols nikaal dein (+, -, spaces)
+    number = number.replace(/[^0-9]/g, '');
+
+    try {
+        if (!sock) {
+            return res.status(500).json({ status: "error", reason: "WhatsApp bot abhi server se connect nahi hai" });
+        }
+
+        const jid = `${number}@s.whatsapp.net`;
+        
+        // WhatsApp par check karein ke number mojood hai ya nahi
+        const [result] = await sock.onWhatsApp(jid);
+        
+        if (!result) {
+            return res.json({ status: "deleted", reason: "Not Verified / Does not exist on WA" });
+        }
+
+        return res.json({ status: "active", reason: "Number is Safe & Active" });
+
+    } catch (error) {
+        console.error("Error checking number:", error);
+        
+        if (error.message && (error.message.includes('banned') || error.message.includes('403'))) {
+            return res.json({ status: "deleted", reason: "Number is Banned by WhatsApp" });
+        }
+        
+        return res.json({ status: "error", reason: "Verification Failed" });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`===========================================`);
+    console.log(`🚀 Server chal raha hai!`);
+    console.log(`👉 Browser me yeh link open karein: http://localhost:${PORT}`);
+    console.log(`===========================================`);
+});

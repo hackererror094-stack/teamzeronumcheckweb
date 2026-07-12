@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: whatsapp
+    description: WhatsApp connection and number verification
 paths:
   /healthz:
     get:
@@ -24,6 +26,55 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /wa/status:
+    get:
+      operationId: getWaStatus
+      tags: [whatsapp]
+      summary: Get WhatsApp connection status
+      description: Returns current connection status and QR code if not connected
+      responses:
+        "200":
+          description: Status returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaStatus"
+
+  /wa/disconnect:
+    post:
+      operationId: disconnectWa
+      tags: [whatsapp]
+      summary: Disconnect WhatsApp
+      description: Logs out and disconnects the current WhatsApp session
+      responses:
+        "200":
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DisconnectResult"
+
+  /wa/verify-number:
+    post:
+      operationId: verifyNumber
+      tags: [whatsapp]
+      summary: Verify a phone number on WhatsApp
+      description: Checks whether a given number is registered on WhatsApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NumberInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +85,48 @@ components:
       required:
         - status
 
+    WaStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        qr:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+      required:
+        - connected
+
+    DisconnectResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    NumberInput:
+      type: object
+      properties:
+        number:
+          type: string
+      required:
+        - number
+
+    VerifyResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, deleted, error]
+        reason:
+          type: string
+        number:
+          type: string
+      required:
+        - status
+        - reason
+        - number
