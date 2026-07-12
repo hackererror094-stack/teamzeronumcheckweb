@@ -15,10 +15,24 @@ export interface WaStatus {
   qr?: string | null;
   /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  pairingCode?: string | null;
 }
 
 export interface DisconnectResult {
   success: boolean;
+  message: string;
+}
+
+export interface PairingCodeInput {
+  /** Phone number in international format e.g. 923001234567 */
+  phone: string;
+}
+
+export interface PairingCodeResult {
+  success: boolean;
+  /** @nullable */
+  code?: string | null;
   message: string;
 }
 

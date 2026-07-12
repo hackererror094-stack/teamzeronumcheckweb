@@ -12,4 +12,6 @@ export interface WaStatus {
   qr?: string | null;
   /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  pairingCode?: string | null;
 }

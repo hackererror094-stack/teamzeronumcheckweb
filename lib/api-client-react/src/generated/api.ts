@@ -23,6 +23,8 @@ import type {
   DisconnectResult,
   HealthStatus,
   NumberInput,
+  PairingCodeInput,
+  PairingCodeResult,
   VerifyResult,
   WaStatus
 } from './api.schemas';
@@ -63,7 +65,6 @@ export const getHealthCheckUrl = () => {
 }
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const healthCheck = async ( options?: RequestInit): Promise<HealthStatus> => {
@@ -141,7 +142,6 @@ export const getGetWaStatusUrl = () => {
 }
 
 /**
- * Returns current connection status and QR code if not connected
  * @summary Get WhatsApp connection status
  */
 export const getWaStatus = async ( options?: RequestInit): Promise<WaStatus> => {
@@ -219,7 +219,6 @@ export const getDisconnectWaUrl = () => {
 }
 
 /**
- * Logs out and disconnects the current WhatsApp session
  * @summary Disconnect WhatsApp
  */
 export const disconnectWa = async ( options?: RequestInit): Promise<DisconnectResult> => {
@@ -282,6 +281,77 @@ export const useDisconnectWa = <TError = ErrorType<unknown>,
       return useMutation(getDisconnectWaMutationOptions(options));
     }
 
+export const getRequestPairingCodeUrl = () => {
+
+
+
+
+  return `/api/wa/pairing-code`
+}
+
+/**
+ * @summary Request a pairing code for phone number login
+ */
+export const requestPairingCode = async (pairingCodeInput: PairingCodeInput, options?: RequestInit): Promise<PairingCodeResult> => {
+
+  return customFetch<PairingCodeResult>(getRequestPairingCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pairingCodeInput)
+  }
+);}
+
+
+
+
+
+export const getRequestPairingCodeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPairingCode>>, TError,{data: BodyType<PairingCodeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestPairingCode>>, TError,{data: BodyType<PairingCodeInput>}, TContext> => {
+
+const mutationKey = ['requestPairingCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestPairingCode>>, {data: BodyType<PairingCodeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestPairingCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestPairingCodeMutationResult = NonNullable<Awaited<ReturnType<typeof requestPairingCode>>>
+    export type RequestPairingCodeMutationBody = BodyType<PairingCodeInput>
+    export type RequestPairingCodeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Request a pairing code for phone number login
+ */
+export const useRequestPairingCode = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestPairingCode>>, TError,{data: BodyType<PairingCodeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestPairingCode>>,
+        TError,
+        {data: BodyType<PairingCodeInput>},
+        TContext
+      > => {
+      return useMutation(getRequestPairingCodeMutationOptions(options));
+    }
+
 export const getVerifyNumberUrl = () => {
 
 
@@ -291,7 +361,6 @@ export const getVerifyNumberUrl = () => {
 }
 
 /**
- * Checks whether a given number is registered on WhatsApp
  * @summary Verify a phone number on WhatsApp
  */
 export const verifyNumber = async (numberInput: NumberInput, options?: RequestInit): Promise<VerifyResult> => {

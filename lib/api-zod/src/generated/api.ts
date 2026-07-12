@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -18,18 +17,17 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Returns current connection status and QR code if not connected
  * @summary Get WhatsApp connection status
  */
 export const GetWaStatusResponse = zod.object({
   "connected": zod.boolean(),
   "qr": zod.string().nullish(),
-  "phone": zod.string().nullish()
+  "phone": zod.string().nullish(),
+  "pairingCode": zod.string().nullish()
 })
 
 
 /**
- * Logs out and disconnects the current WhatsApp session
  * @summary Disconnect WhatsApp
  */
 export const DisconnectWaResponse = zod.object({
@@ -39,7 +37,20 @@ export const DisconnectWaResponse = zod.object({
 
 
 /**
- * Checks whether a given number is registered on WhatsApp
+ * @summary Request a pairing code for phone number login
+ */
+export const RequestPairingCodeBody = zod.object({
+  "phone": zod.string().describe('Phone number in international format e.g. 923001234567')
+})
+
+export const RequestPairingCodeResponse = zod.object({
+  "success": zod.boolean(),
+  "code": zod.string().nullish(),
+  "message": zod.string()
+})
+
+
+/**
  * @summary Verify a phone number on WhatsApp
  */
 export const VerifyNumberBody = zod.object({
