@@ -12,6 +12,10 @@ tags:
     description: Health operations
   - name: whatsapp
     description: WhatsApp connection and number verification
+  - name: scan
+    description: Background server-side scan jobs
+  - name: bot
+    description: Telegram bot integration
 paths:
   /healthz:
     get:
@@ -89,6 +93,131 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VerifyResult"
+
+  /scan/start:
+    post:
+      operationId: startScanJob
+      tags: [scan]
+      summary: Start a background server-side scan job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartScanInput"
+      responses:
+        "200":
+          description: Scan job started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartScanResult"
+
+  /scan/{jobId}:
+    get:
+      operationId: getScanJob
+      tags: [scan]
+      summary: Get scan job status and results
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Scan job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResult"
+    delete:
+      operationId: deleteScanJob
+      tags: [scan]
+      summary: Delete a scan job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  /scan/{jobId}/stop:
+    post:
+      operationId: stopScanJob
+      tags: [scan]
+      summary: Stop a running scan job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
+  /bot/setup:
+    post:
+      operationId: setupBot
+      tags: [bot]
+      summary: Setup Telegram bot with a token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotSetupInput"
+      responses:
+        "200":
+          description: Bot connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSetupResult"
+
+  /bot/status:
+    get:
+      operationId: getBotStatus
+      tags: [bot]
+      summary: Get Telegram bot status
+      responses:
+        "200":
+          description: Bot status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+
+  /bot/stop:
+    post:
+      operationId: stopBot
+      tags: [bot]
+      summary: Stop and disconnect the Telegram bot
+      responses:
+        "200":
+          description: Stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
 
 components:
   schemas:
@@ -169,3 +298,132 @@ components:
         - status
         - reason
         - number
+
+    StartScanInput:
+      type: object
+      properties:
+        numbers:
+          type: array
+          items:
+            type: string
+        workspaceId:
+          type: string
+        delay:
+          type: integer
+          description: Delay in ms between each check (default 400)
+      required:
+        - numbers
+
+    StartScanResult:
+      type: object
+      properties:
+        jobId:
+          type: string
+        total:
+          type: integer
+      required:
+        - jobId
+        - total
+
+    ScanResult:
+      type: object
+      properties:
+        number:
+          type: string
+        status:
+          type: string
+          enum: [active, deleted, error]
+        reason:
+          type: string
+        timestamp:
+          type: string
+      required:
+        - number
+        - status
+        - reason
+        - timestamp
+
+    ScanJob:
+      type: object
+      properties:
+        id:
+          type: string
+        workspaceId:
+          type: string
+        numbers:
+          type: array
+          items:
+            type: string
+        currentIndex:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScanResult"
+        status:
+          type: string
+          enum: [running, stopped, done]
+        delay:
+          type: integer
+        startedAt:
+          type: string
+        stoppedAt:
+          type: ["string", "null"]
+      required:
+        - id
+        - workspaceId
+        - numbers
+        - currentIndex
+        - results
+        - status
+        - delay
+        - startedAt
+        - stoppedAt
+
+    BotSetupInput:
+      type: object
+      properties:
+        token:
+          type: string
+      required:
+        - token
+
+    BotSetupResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        username:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+      required:
+        - success
+
+    BotStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        username:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+      required:
+        - connected
+
+    SuccessResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    ErrorResult:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error

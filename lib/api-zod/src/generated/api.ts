@@ -64,3 +64,99 @@ export const VerifyNumberResponse = zod.object({
 })
 
 
+/**
+ * @summary Start a background server-side scan job
+ */
+export const StartScanJobBody = zod.object({
+  "numbers": zod.array(zod.string()),
+  "workspaceId": zod.string().optional(),
+  "delay": zod.number().optional().describe('Delay in ms between each check (default 400)')
+})
+
+export const StartScanJobResponse = zod.object({
+  "jobId": zod.string(),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Get scan job status and results
+ */
+export const GetScanJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const GetScanJobResponse = zod.object({
+  "id": zod.string(),
+  "workspaceId": zod.string(),
+  "numbers": zod.array(zod.string()),
+  "currentIndex": zod.number(),
+  "results": zod.array(zod.object({
+  "number": zod.string(),
+  "status": zod.enum(['active', 'deleted', 'error']),
+  "reason": zod.string(),
+  "timestamp": zod.string()
+})),
+  "status": zod.enum(['running', 'stopped', 'done']),
+  "delay": zod.number(),
+  "startedAt": zod.string(),
+  "stoppedAt": zod.string().nullable()
+})
+
+
+/**
+ * @summary Delete a scan job
+ */
+export const DeleteScanJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const DeleteScanJobResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Stop a running scan job
+ */
+export const StopScanJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const StopScanJobResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Setup Telegram bot with a token
+ */
+export const SetupBotBody = zod.object({
+  "token": zod.string()
+})
+
+export const SetupBotResponse = zod.object({
+  "success": zod.boolean(),
+  "username": zod.string().nullish(),
+  "error": zod.string().nullish()
+})
+
+
+/**
+ * @summary Get Telegram bot status
+ */
+export const GetBotStatusResponse = zod.object({
+  "connected": zod.boolean(),
+  "username": zod.string().nullish(),
+  "error": zod.string().nullish()
+})
+
+
+/**
+ * @summary Stop and disconnect the Telegram bot
+ */
+export const StopBotResponse = zod.object({
+  "success": zod.boolean()
+})
+
+

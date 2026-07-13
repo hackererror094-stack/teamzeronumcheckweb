@@ -55,3 +55,81 @@ export interface VerifyResult {
   number: string;
 }
 
+export interface StartScanInput {
+  numbers: string[];
+  workspaceId?: string;
+  /** Delay in ms between each check (default 400) */
+  delay?: number;
+}
+
+export interface StartScanResult {
+  jobId: string;
+  total: number;
+}
+
+export type ScanResultStatus = typeof ScanResultStatus[keyof typeof ScanResultStatus];
+
+
+export const ScanResultStatus = {
+  active: 'active',
+  deleted: 'deleted',
+  error: 'error',
+} as const;
+
+export interface ScanResult {
+  number: string;
+  status: ScanResultStatus;
+  reason: string;
+  timestamp: string;
+}
+
+export type ScanJobStatus = typeof ScanJobStatus[keyof typeof ScanJobStatus];
+
+
+export const ScanJobStatus = {
+  running: 'running',
+  stopped: 'stopped',
+  done: 'done',
+} as const;
+
+export interface ScanJob {
+  id: string;
+  workspaceId: string;
+  numbers: string[];
+  currentIndex: number;
+  results: ScanResult[];
+  status: ScanJobStatus;
+  delay: number;
+  startedAt: string;
+  /** @nullable */
+  stoppedAt: string | null;
+}
+
+export interface BotSetupInput {
+  token: string;
+}
+
+export interface BotSetupResult {
+  success: boolean;
+  /** @nullable */
+  username?: string | null;
+  /** @nullable */
+  error?: string | null;
+}
+
+export interface BotStatus {
+  connected: boolean;
+  /** @nullable */
+  username?: string | null;
+  /** @nullable */
+  error?: string | null;
+}
+
+export interface SuccessResult {
+  success: boolean;
+}
+
+export interface ErrorResult {
+  error: string;
+}
+

@@ -20,11 +20,19 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BotSetupInput,
+  BotSetupResult,
+  BotStatus,
   DisconnectResult,
+  ErrorResult,
   HealthStatus,
   NumberInput,
   PairingCodeInput,
   PairingCodeResult,
+  ScanJob,
+  StartScanInput,
+  StartScanResult,
+  SuccessResult,
   VerifyResult,
   WaStatus
 } from './api.schemas';
@@ -421,5 +429,514 @@ export const useVerifyNumber = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getVerifyNumberMutationOptions(options));
+    }
+
+export const getStartScanJobUrl = () => {
+
+
+
+
+  return `/api/scan/start`
+}
+
+/**
+ * @summary Start a background server-side scan job
+ */
+export const startScanJob = async (startScanInput: StartScanInput, options?: RequestInit): Promise<StartScanResult> => {
+
+  return customFetch<StartScanResult>(getStartScanJobUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startScanInput)
+  }
+);}
+
+
+
+
+
+export const getStartScanJobMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startScanJob>>, TError,{data: BodyType<StartScanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startScanJob>>, TError,{data: BodyType<StartScanInput>}, TContext> => {
+
+const mutationKey = ['startScanJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startScanJob>>, {data: BodyType<StartScanInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startScanJob(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartScanJobMutationResult = NonNullable<Awaited<ReturnType<typeof startScanJob>>>
+    export type StartScanJobMutationBody = BodyType<StartScanInput>
+    export type StartScanJobMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Start a background server-side scan job
+ */
+export const useStartScanJob = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startScanJob>>, TError,{data: BodyType<StartScanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startScanJob>>,
+        TError,
+        {data: BodyType<StartScanInput>},
+        TContext
+      > => {
+      return useMutation(getStartScanJobMutationOptions(options));
+    }
+
+export const getGetScanJobUrl = (jobId: string,) => {
+
+
+
+
+  return `/api/scan/${jobId}`
+}
+
+/**
+ * @summary Get scan job status and results
+ */
+export const getScanJob = async (jobId: string, options?: RequestInit): Promise<ScanJob> => {
+
+  return customFetch<ScanJob>(getGetScanJobUrl(jobId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScanJobQueryKey = (jobId: string,) => {
+    return [
+    `/api/scan/${jobId}`
+    ] as const;
+    }
+
+
+export const getGetScanJobQueryOptions = <TData = Awaited<ReturnType<typeof getScanJob>>, TError = ErrorType<ErrorResult>>(jobId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScanJobQueryKey(jobId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScanJob>>> = ({ signal }) => getScanJob(jobId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jobId !== null && jobId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScanJob>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetScanJobQueryResult = NonNullable<Awaited<ReturnType<typeof getScanJob>>>
+export type GetScanJobQueryError = ErrorType<ErrorResult>
+
+
+/**
+ * @summary Get scan job status and results
+ */
+
+export function useGetScanJob<TData = Awaited<ReturnType<typeof getScanJob>>, TError = ErrorType<ErrorResult>>(
+ jobId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScanJob>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetScanJobQueryOptions(jobId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteScanJobUrl = (jobId: string,) => {
+
+
+
+
+  return `/api/scan/${jobId}`
+}
+
+/**
+ * @summary Delete a scan job
+ */
+export const deleteScanJob = async (jobId: string, options?: RequestInit): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getDeleteScanJobUrl(jobId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteScanJobMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScanJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteScanJob>>, TError,{jobId: string}, TContext> => {
+
+const mutationKey = ['deleteScanJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteScanJob>>, {jobId: string}> = (props) => {
+          const {jobId} = props ?? {};
+
+          return  deleteScanJob(jobId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteScanJobMutationResult = NonNullable<Awaited<ReturnType<typeof deleteScanJob>>>
+
+    export type DeleteScanJobMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a scan job
+ */
+export const useDeleteScanJob = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteScanJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteScanJob>>,
+        TError,
+        {jobId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteScanJobMutationOptions(options));
+    }
+
+export const getStopScanJobUrl = (jobId: string,) => {
+
+
+
+
+  return `/api/scan/${jobId}/stop`
+}
+
+/**
+ * @summary Stop a running scan job
+ */
+export const stopScanJob = async (jobId: string, options?: RequestInit): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getStopScanJobUrl(jobId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopScanJobMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopScanJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopScanJob>>, TError,{jobId: string}, TContext> => {
+
+const mutationKey = ['stopScanJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopScanJob>>, {jobId: string}> = (props) => {
+          const {jobId} = props ?? {};
+
+          return  stopScanJob(jobId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopScanJobMutationResult = NonNullable<Awaited<ReturnType<typeof stopScanJob>>>
+
+    export type StopScanJobMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Stop a running scan job
+ */
+export const useStopScanJob = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopScanJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopScanJob>>,
+        TError,
+        {jobId: string},
+        TContext
+      > => {
+      return useMutation(getStopScanJobMutationOptions(options));
+    }
+
+export const getSetupBotUrl = () => {
+
+
+
+
+  return `/api/bot/setup`
+}
+
+/**
+ * @summary Setup Telegram bot with a token
+ */
+export const setupBot = async (botSetupInput: BotSetupInput, options?: RequestInit): Promise<BotSetupResult> => {
+
+  return customFetch<BotSetupResult>(getSetupBotUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(botSetupInput)
+  }
+);}
+
+
+
+
+
+export const getSetupBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupBot>>, TError,{data: BodyType<BotSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupBot>>, TError,{data: BodyType<BotSetupInput>}, TContext> => {
+
+const mutationKey = ['setupBot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupBot>>, {data: BodyType<BotSetupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setupBot(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetupBotMutationResult = NonNullable<Awaited<ReturnType<typeof setupBot>>>
+    export type SetupBotMutationBody = BodyType<BotSetupInput>
+    export type SetupBotMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Setup Telegram bot with a token
+ */
+export const useSetupBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupBot>>, TError,{data: BodyType<BotSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setupBot>>,
+        TError,
+        {data: BodyType<BotSetupInput>},
+        TContext
+      > => {
+      return useMutation(getSetupBotMutationOptions(options));
+    }
+
+export const getGetBotStatusUrl = () => {
+
+
+
+
+  return `/api/bot/status`
+}
+
+/**
+ * @summary Get Telegram bot status
+ */
+export const getBotStatus = async ( options?: RequestInit): Promise<BotStatus> => {
+
+  return customFetch<BotStatus>(getGetBotStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBotStatusQueryKey = () => {
+    return [
+    `/api/bot/status`
+    ] as const;
+    }
+
+
+export const getGetBotStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBotStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBotStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBotStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBotStatus>>> = ({ signal }) => getBotStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBotStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBotStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBotStatus>>>
+export type GetBotStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Telegram bot status
+ */
+
+export function useGetBotStatus<TData = Awaited<ReturnType<typeof getBotStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBotStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBotStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStopBotUrl = () => {
+
+
+
+
+  return `/api/bot/stop`
+}
+
+/**
+ * @summary Stop and disconnect the Telegram bot
+ */
+export const stopBot = async ( options?: RequestInit): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getStopBotUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStopBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof stopBot>>, TError,void, TContext> => {
+
+const mutationKey = ['stopBot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stopBot>>, void> = () => {
+
+
+          return  stopBot(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StopBotMutationResult = NonNullable<Awaited<ReturnType<typeof stopBot>>>
+
+    export type StopBotMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Stop and disconnect the Telegram bot
+ */
+export const useStopBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stopBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof stopBot>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStopBotMutationOptions(options));
     }
 

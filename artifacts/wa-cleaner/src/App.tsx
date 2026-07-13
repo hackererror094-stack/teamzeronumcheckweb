@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
+import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-function Router() {
+function AuthGate() {
+  const [authed, setAuthed] = useState(() => localStorage.getItem("wc_auth") === "1");
+
+  if (!authed) {
+    return <Login onLogin={() => setAuthed(true)} />;
+  }
+
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
@@ -21,7 +29,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AuthGate />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

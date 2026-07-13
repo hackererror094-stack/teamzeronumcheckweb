@@ -6,11 +6,22 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './botSetupInput';
+export * from './botSetupResult';
+export * from './botStatus';
 export * from './disconnectResult';
+export * from './errorResult';
 export * from './healthStatus';
 export * from './numberInput';
 export * from './pairingCodeInput';
 export * from './pairingCodeResult';
+export * from './scanJob';
+export * from './scanJobStatus';
+export * from './scanResult';
+export * from './scanResultStatus';
+export * from './startScanInput';
+export * from './startScanResult';
+export * from './successResult';
 export * from './verifyResult';
 export * from './verifyResultStatus';
 export * from './waStatus';
