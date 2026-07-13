@@ -10,19 +10,37 @@ export interface BotState {
   error: string | null;
   autoRestart: boolean;
   startedAt: string | null;
+  scanDelay: number;
 }
+
+// Parse any format: +923001234567, 923001234567, 92-300-1234567, etc.
+function parseNumbers(raw: string): string[] {
+  return raw
+    .split("\n")
+    .map((line) => line.replace(/[^0-9]/g, "").trim())
+    .filter((n) => n.length >= 10 && n.length <= 15);
+}
+
+const SPEED_MAP: Record<string, number> = {
+  turbo: 200,
+  fast: 400,
+  normal: 800,
+  safe: 1500,
+};
 
 class BotManager {
   private bot: TelegramBot | null = null;
   private token: string | null = null;
   private autoRestartFlag = false;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private scanDelay = 400;
   private state: BotState = {
     connected: false,
     username: null,
     error: null,
     autoRestart: false,
     startedAt: null,
+    scanDelay: 400,
   };
 
   getState(): BotState {
@@ -32,6 +50,11 @@ class BotManager {
   setAutoRestart(enabled: boolean): void {
     this.autoRestartFlag = enabled;
     this.state.autoRestart = enabled;
+  }
+
+  setScanDelay(delay: number): void {
+    this.scanDelay = delay;
+    this.state.scanDelay = delay;
   }
 
   async setup(token: string): Promise<void> {
@@ -48,23 +71,64 @@ class BotManager {
       error: null,
       autoRestart: this.autoRestartFlag,
       startedAt: new Date().toISOString(),
+      scanDelay: this.scanDelay,
     };
 
     bot.on("message", async (msg) => {
       const chatId = msg.chat.id;
+
       if (msg.document) {
         await this.handleDocument(chatId, msg.document);
-      } else if (msg.text === "/start") {
-        bot.sendMessage(chatId, "WA Number Cleaner Bot ready! ✅\n\nNumbers bhejo (ek line mein ek) ya .txt file upload karo — clean list wapas milegi.").catch(() => {});
-      } else if (msg.text && !msg.text.startsWith("/")) {
-        const numbers = msg.text
-          .split("\n")
-          .map((n) => n.trim())
-          .filter((n) => /^[0-9]{10,15}$/.test(n));
+        return;
+      }
+
+      if (!msg.text) return;
+
+      if (msg.text === "/start") {
+        bot.sendMessage(
+          chatId,
+          `*WA Number Cleaner Bot* ✅\n\nNumbers bhejo (ek line mein ek) ya .txt file upload karo.\n\n*Commands:*\n/speed — current speed dekho\n/speed turbo — 200ms\n/speed fast — 400ms _(default)_\n/speed normal — 800ms\n/speed safe — 1500ms\n/help — madad`,
+          { parse_mode: "Markdown" }
+        ).catch(() => {});
+        return;
+      }
+
+      if (msg.text === "/help") {
+        bot.sendMessage(
+          chatId,
+          `*Kaise use karein:*\n\n1. Numbers paste karo (ek line = ek number)\n2. Ya .txt file upload karo\n3. Bot scan karega aur clean list bhejega\n\n*Number formats supported:*\n• 923001234567\n• +923001234567\n• 58412123456 _(Venezuela etc)_\n\n*Speed set karo:*\n/speed fast, /speed safe, etc`,
+          { parse_mode: "Markdown" }
+        ).catch(() => {});
+        return;
+      }
+
+      if (msg.text.startsWith("/speed")) {
+        const parts = msg.text.trim().split(/\s+/);
+        if (parts.length === 1) {
+          const cur = Object.entries(SPEED_MAP).find(([, v]) => v === this.scanDelay)?.[0] ?? `${this.scanDelay}ms`;
+          bot.sendMessage(chatId, `Current speed: *${cur}* (${this.scanDelay}ms)\n\nChange karne ke liye:\n/speed turbo — 200ms\n/speed fast — 400ms\n/speed normal — 800ms\n/speed safe — 1500ms`, { parse_mode: "Markdown" }).catch(() => {});
+          return;
+        }
+        const key = parts[1].toLowerCase();
+        if (SPEED_MAP[key] !== undefined) {
+          this.setScanDelay(SPEED_MAP[key]);
+          bot.sendMessage(chatId, `✅ Speed set: *${key}* (${SPEED_MAP[key]}ms)`, { parse_mode: "Markdown" }).catch(() => {});
+        } else if (/^\d+$/.test(parts[1])) {
+          const ms = Math.min(5000, Math.max(100, parseInt(parts[1])));
+          this.setScanDelay(ms);
+          bot.sendMessage(chatId, `✅ Speed set: *${ms}ms*`, { parse_mode: "Markdown" }).catch(() => {});
+        } else {
+          bot.sendMessage(chatId, "Galat speed. Use: /speed turbo | fast | normal | safe").catch(() => {});
+        }
+        return;
+      }
+
+      if (!msg.text.startsWith("/")) {
+        const numbers = parseNumbers(msg.text);
         if (numbers.length > 0) {
           await this.runAndReply(chatId, numbers);
         } else {
-          bot.sendMessage(chatId, "Numbers bhejo — ek line mein ek number (e.g. 923001234567), ya .txt file upload karo").catch(() => {});
+          bot.sendMessage(chatId, "Valid numbers nahi mile.\n\nFormat: ek line mein ek number\n• 923001234567\n• +58412123456\n\nYa /help dekho").catch(() => {});
         }
       }
     });
@@ -112,32 +176,36 @@ class BotManager {
     this.token = null;
     this.autoRestartFlag = false;
     await this.stopInternal();
-    this.state = { connected: false, username: null, error: null, autoRestart: false, startedAt: null };
+    this.state = { connected: false, username: null, error: null, autoRestart: false, startedAt: null, scanDelay: this.scanDelay };
   }
 
   private async handleDocument(chatId: number, doc: TgDocument): Promise<void> {
     if (!this.bot || !this.token) return;
     try {
-      await this.bot.sendMessage(chatId, "File mil gayi, parse kar raha hoon...");
+      await this.bot.sendMessage(chatId, "📄 File mil gayi, parse kar raha hoon...");
       const fileInfo = await this.bot.getFile(doc.file_id);
       const fileUrl = `https://api.telegram.org/file/bot${this.token}/${fileInfo.file_path}`;
       const content = await this.downloadText(fileUrl);
-      const numbers = content.split("\n").map((n) => n.trim()).filter((n) => /^[0-9]{10,15}$/.test(n));
+      const numbers = parseNumbers(content);
+
       if (numbers.length === 0) {
-        await this.bot.sendMessage(chatId, "File mein valid numbers nahi mile (format: 923001234567)");
+        await this.bot.sendMessage(chatId, "❌ File mein valid numbers nahi mile.\n\nSupported formats:\n• 923001234567\n• +923001234567\n• +58412123456 (any country)\n\nHar line mein sirf ek number hona chahiye.");
         return;
       }
+
       await this.runAndReply(chatId, numbers);
     } catch (err: any) {
-      this.bot?.sendMessage(chatId, `Error: ${err?.message ?? "File process nahi ho saki"}`).catch(() => {});
+      this.bot?.sendMessage(chatId, `❌ Error: ${err?.message ?? "File process nahi ho saki"}`).catch(() => {});
     }
   }
 
   private async runAndReply(chatId: number, numbers: string[]): Promise<void> {
     if (!this.bot) return;
-    await this.bot.sendMessage(chatId, `${numbers.length} numbers ka scan shuru ⏳`);
+    const speedName = Object.entries(SPEED_MAP).find(([, v]) => v === this.scanDelay)?.[0] ?? `${this.scanDelay}ms`;
+    await this.bot.sendMessage(chatId, `⏳ *${numbers.length} numbers* ka scan shuru...\nSpeed: ${speedName} (${this.scanDelay}ms)\nEst. time: ~${Math.round((numbers.length * this.scanDelay) / 60000)} min`, { parse_mode: "Markdown" });
 
-    const job = scanManager.createJob(numbers, "bot", 400);
+    const job = scanManager.createJob(numbers, "bot", this.scanDelay);
+
     await new Promise<void>((resolve) => {
       const iv = setInterval(() => {
         const j = scanManager.getJob(job.id);
@@ -153,14 +221,15 @@ class BotManager {
 
     await this.bot.sendMessage(
       chatId,
-      `✅ Scan complete!\n\n📊 Total: ${done.results.length}\n🟢 Active: ${active.length}\n🔴 Deleted/Invalid: ${deleted}\n\nClean file neeche 👇`
+      `✅ *Scan complete!*\n\n📊 Total: ${done.results.length}\n🟢 Active: ${active.length}\n🔴 Deleted/Invalid: ${deleted}\n\nClean file neeche 👇`,
+      { parse_mode: "Markdown" }
     );
 
     if (active.length > 0) {
       const buf = Buffer.from(active.join("\n"), "utf-8");
       await this.bot.sendDocument(chatId, buf, {}, { filename: `active_${Date.now()}.txt`, contentType: "text/plain" });
     } else {
-      await this.bot.sendMessage(chatId, "Koi active number nahi mila.");
+      await this.bot.sendMessage(chatId, "😕 Koi active number nahi mila.");
     }
 
     scanManager.deleteJob(job.id);
