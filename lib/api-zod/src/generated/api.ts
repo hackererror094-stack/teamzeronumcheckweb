@@ -148,7 +148,31 @@ export const SetupBotResponse = zod.object({
 export const GetBotStatusResponse = zod.object({
   "connected": zod.boolean(),
   "username": zod.string().nullish(),
+  "error": zod.string().nullish(),
+  "autoRestart": zod.boolean(),
+  "startedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Restart the Telegram bot (reconnect with same token)
+ */
+export const RestartBotResponse = zod.object({
+  "success": zod.boolean(),
+  "username": zod.string().nullish(),
   "error": zod.string().nullish()
+})
+
+
+/**
+ * @summary Enable or disable 24/7 auto-restart
+ */
+export const SetAutoRestartBody = zod.object({
+  "enabled": zod.boolean()
+})
+
+export const SetAutoRestartResponse = zod.object({
+  "success": zod.boolean()
 })
 
 

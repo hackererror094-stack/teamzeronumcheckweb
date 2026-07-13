@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AutoRestartInput,
   BotSetupInput,
   BotSetupResult,
   BotStatus,
@@ -868,6 +869,148 @@ export function useGetBotStatus<TData = Awaited<ReturnType<typeof getBotStatus>>
 
 
 
+
+export const getRestartBotUrl = () => {
+
+
+
+
+  return `/api/bot/restart`
+}
+
+/**
+ * @summary Restart the Telegram bot (reconnect with same token)
+ */
+export const restartBot = async ( options?: RequestInit): Promise<BotSetupResult> => {
+
+  return customFetch<BotSetupResult>(getRestartBotUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRestartBotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restartBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restartBot>>, TError,void, TContext> => {
+
+const mutationKey = ['restartBot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restartBot>>, void> = () => {
+
+
+          return  restartBot(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestartBotMutationResult = NonNullable<Awaited<ReturnType<typeof restartBot>>>
+
+    export type RestartBotMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Restart the Telegram bot (reconnect with same token)
+ */
+export const useRestartBot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restartBot>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restartBot>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRestartBotMutationOptions(options));
+    }
+
+export const getSetAutoRestartUrl = () => {
+
+
+
+
+  return `/api/bot/auto-restart`
+}
+
+/**
+ * @summary Enable or disable 24/7 auto-restart
+ */
+export const setAutoRestart = async (autoRestartInput: AutoRestartInput, options?: RequestInit): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getSetAutoRestartUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(autoRestartInput)
+  }
+);}
+
+
+
+
+
+export const getSetAutoRestartMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAutoRestart>>, TError,{data: BodyType<AutoRestartInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setAutoRestart>>, TError,{data: BodyType<AutoRestartInput>}, TContext> => {
+
+const mutationKey = ['setAutoRestart'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setAutoRestart>>, {data: BodyType<AutoRestartInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setAutoRestart(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetAutoRestartMutationResult = NonNullable<Awaited<ReturnType<typeof setAutoRestart>>>
+    export type SetAutoRestartMutationBody = BodyType<AutoRestartInput>
+    export type SetAutoRestartMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Enable or disable 24/7 auto-restart
+ */
+export const useSetAutoRestart = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setAutoRestart>>, TError,{data: BodyType<AutoRestartInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setAutoRestart>>,
+        TError,
+        {data: BodyType<AutoRestartInput>},
+        TContext
+      > => {
+      return useMutation(getSetAutoRestartMutationOptions(options));
+    }
 
 export const getStopBotUrl = () => {
 

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './autoRestartInput';
 export * from './botSetupInput';
 export * from './botSetupResult';
 export * from './botStatus';

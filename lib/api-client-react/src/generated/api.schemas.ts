@@ -123,6 +123,13 @@ export interface BotStatus {
   username?: string | null;
   /** @nullable */
   error?: string | null;
+  autoRestart: boolean;
+  /** @nullable */
+  startedAt?: string | null;
+}
+
+export interface AutoRestartInput {
+  enabled: boolean;
 }
 
 export interface SuccessResult {

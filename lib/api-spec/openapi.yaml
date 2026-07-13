@@ -206,6 +206,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/BotStatus"
 
+  /bot/restart:
+    post:
+      operationId: restartBot
+      tags: [bot]
+      summary: Restart the Telegram bot (reconnect with same token)
+      responses:
+        "200":
+          description: Restarted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSetupResult"
+
+  /bot/auto-restart:
+    post:
+      operationId: setAutoRestart
+      tags: [bot]
+      summary: Enable or disable 24/7 auto-restart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoRestartInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+
   /bot/stop:
     post:
       operationId: stopBot
@@ -409,8 +441,21 @@ components:
           type: ["string", "null"]
         error:
           type: ["string", "null"]
+        autoRestart:
+          type: boolean
+        startedAt:
+          type: ["string", "null"]
       required:
         - connected
+        - autoRestart
+
+    AutoRestartInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
 
     SuccessResult:
       type: object
